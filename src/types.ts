@@ -76,7 +76,10 @@ export interface Week {
   label:     string; // display label e.g. 'Apr 27 – May 3'
 }
 
-export type DeviationFilter = 'all' | 'negative';
+export type DeviationLagPreset = '' | '5' | '10' | '15' | '20' | '25' | '30';
+
+/** Lag vs projection: strictly greater or strictly fewer `daysBehind` than the chosen threshold. */
+export type DeviationCompare = 'more' | 'less';
 
 export interface GanttFilters {
   search:      string;
@@ -88,6 +91,11 @@ export interface GanttFilters {
   fromWeek:    string; // ISO date of Monday of start week
   toWeek:      string; // ISO date of Monday of end week
   region:      Region;
-  /** `negative`: only conversions whose actual rail lags projection (negative schedule deviation). */
-  deviationFilter: DeviationFilter;
+  /** `more` = strictly more than N days behind; `less` = from 1 day behind up to (excluding) N (default `more`). */
+  deviationCompare: DeviationCompare;
+  /**
+   * Lag threshold in days (`daysBehind` vs projection). `''` = no deviation filter (unselected).
+   * Presets `5`…`30`.
+   */
+  deviationLagMinDays: DeviationLagPreset;
 }

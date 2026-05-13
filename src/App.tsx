@@ -19,7 +19,8 @@ const DEFAULT_FILTERS: GanttFilters = {
   fromWeek:    DEFAULT_FROM_WEEK,
   toWeek:      DEFAULT_TO_WEEK,
   region:      'UK',
-  deviationFilter: 'all',
+  deviationCompare: 'more',
+  deviationLagMinDays: '',
 };
 
 export default function App() {
@@ -57,8 +58,17 @@ export default function App() {
     toDate.setDate(toDate.getDate() + 6); // include full last week (Sun)
     list = list.filter(a => a.goLiveDate >= fromDate && a.goLiveDate <= toDate);
 
-    if (filters.deviationFilter === 'negative') {
-      list = list.filter(a => a.daysBehind > 0);
+    const preset = filters.deviationLagMinDays;
+    if (preset !== '') {
+      const threshold = Number(preset);
+      if (!Number.isNaN(threshold)) {
+        if (filters.deviationCompare === 'more') {
+          list = list.filter(a => a.daysBehind > threshold);
+        } else {
+          // At least 1 day behind projection; exclude on-track (0) and ahead (negative).
+          list = list.filter(a => a.daysBehind >= 1 && a.daysBehind < threshold);
+        }
+      }
     }
 
     // Earliest go-live first

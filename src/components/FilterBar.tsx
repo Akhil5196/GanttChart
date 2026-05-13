@@ -1,6 +1,22 @@
 import React, { useState, useRef, useEffect, useMemo, CSSProperties } from 'react';
 import { STATUS_COLORS, STATUS_OPTS, PMO_LIST, IMPL_LEADS } from '../data';
-import type { GanttFilters, DeviationFilter, Region, Status, ViewFilter, ViewMode, Week } from '../types';
+import type { GanttFilters, DeviationCompare, DeviationLagPreset, Region, Status, ViewFilter, ViewMode, Week } from '../types';
+
+type DeviationLagChoice = Exclude<DeviationLagPreset, ''>;
+
+const DEVIATION_COMPARE_OPTIONS: { id: DeviationCompare; label: string }[] = [
+  { id: 'more', label: 'More than' },
+  { id: 'less', label: 'Less than' },
+];
+
+const DEVIATION_LAG_OPTIONS: { id: DeviationLagChoice; label: string }[] = [
+  { id: '5', label: '5' },
+  { id: '10', label: '10' },
+  { id: '15', label: '15' },
+  { id: '20', label: '20' },
+  { id: '25', label: '25' },
+  { id: '30', label: '30' },
+];
 
 const inputStyle: CSSProperties = {
   height: 30, padding: '0 10px', fontSize: 12,
@@ -171,11 +187,14 @@ function MultiSelectDropdown({
 /* ── SingleSelectDropdown (Region — rota pattern) ────────────────────────────*/
 
 function SingleSelectDropdown({
-  options, value, onChange,
+  options, value, onChange, placeholder, minWidth = 80,
 }: {
-  options:  { id: string; label: string }[];
-  value:    string;
-  onChange: (id: string) => void;
+  options:      { id: string; label: string }[];
+  value:        string;
+  onChange:     (id: string) => void;
+  /** When `value` matches no option (e.g. empty), show this instead of a blank label. */
+  placeholder?: string;
+  minWidth?:    number;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -190,6 +209,8 @@ function SingleSelectDropdown({
   }, [open]);
 
   const selected = options.find(o => o.id === value);
+  const usePlaceholder = Boolean(placeholder) && !selected;
+  const labelText = selected?.label ?? (usePlaceholder ? placeholder! : value);
 
   return (
     <div ref={ref} style={{ position: 'relative' }}>
@@ -204,11 +225,15 @@ function SingleSelectDropdown({
           background: 'var(--cf-bg-chrome, #F9FAFB)',
           color: 'var(--cf-text-secondary, #374151)',
           fontSize: 12, fontWeight: 400,
-          cursor: 'pointer', whiteSpace: 'nowrap', minWidth: 80,
+          cursor: 'pointer', whiteSpace: 'nowrap', minWidth,
           fontFamily: 'inherit',
         }}
       >
-        <span style={{ flex: 1, textAlign: 'left' }}>{selected?.label ?? value}</span>
+        <span style={{
+          flex: 1,
+          textAlign: 'left',
+          color: usePlaceholder ? '#9CA3AF' : '#374151',
+        }}>{labelText}</span>
         <svg width="10" height="10" viewBox="0 0 12 12" fill="none" style={{ flexShrink: 0 }}>
           <path d="M2 4.5l4 4 4-4" stroke="#9CA3AF" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
         </svg>
@@ -279,39 +304,51 @@ function ViewToggle({ value, onChange }: { value: ViewFilter; onChange: (v: View
   );
 }
 
-/** All conversions vs only negative deviation (behind projection). — same chrome as ViewToggle. */
-function DeviationToggle({ value, onChange }: { value: DeviationFilter; onChange: (v: DeviationFilter) => void }) {
-  const opts: { v: DeviationFilter; label: string }[] = [
-    { v: 'all', label: 'All' },
-    { v: 'negative', label: 'Negative' },
-  ];
+/** Lag vs projection: compare + day threshold (no outer chrome — matches Region + View by spacing). */
+function DeviationFilterControl({
+  compare,
+  threshold,
+  onChange,
+}: {
+  compare:    DeviationCompare;
+  threshold:  DeviationLagPreset;
+  onChange:     (patch: Partial<Pick<GanttFilters, 'deviationCompare' | 'deviationLagMinDays'>>) => void;
+}) {
   return (
-    <div style={{
-      display: 'flex', border: '1px solid #D1D5DB',
-      borderRadius: 6, overflow: 'hidden', background: '#F9FAFB', flexShrink: 0,
-    }}>
-      {opts.map(o => (
-        <button
-          key={o.v}
-          type="button"
-          aria-pressed={value === o.v}
-          title={
-            o.v === 'negative'
-              ? 'Show only conversions where the actual rail lags the projection.'
-              : 'Show all conversions in the current filters.'
-          }
-          onClick={() => onChange(o.v)}
-          style={{
-            height: 30, padding: '0 12px',
-            background: value === o.v ? '#147B8D' : 'transparent',
-            color: value === o.v ? '#fff' : '#6B7280',
-            fontSize: 12, fontWeight: 500, border: 'none', cursor: 'pointer',
-            transition: 'background 0.15s, color 0.15s', whiteSpace: 'nowrap', fontFamily: 'inherit',
-          }}
-        >
-          {o.label}
-        </button>
-      ))}
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 6,
+        flexShrink: 0,
+      }}
+      title="More than: lag strictly greater than N days. Less than: lag from 1 day up to (but not including) N days — excludes on-track and ahead of projection."
+    >
+      <SingleSelectDropdown
+        options={DEVIATION_COMPARE_OPTIONS}
+        value={compare}
+        minWidth={100}
+        onChange={id => onChange({ deviationCompare: id as DeviationCompare })}
+      />
+      <SingleSelectDropdown
+        options={DEVIATION_LAG_OPTIONS}
+        value={threshold}
+        placeholder="Select"
+        minWidth={64}
+        onChange={id => onChange({ deviationLagMinDays: id as DeviationLagPreset })}
+      />
+      <span
+        style={{
+          fontSize: 12,
+          fontWeight: 400,
+          color: '#6B7280',
+          whiteSpace: 'nowrap',
+          userSelect: 'none',
+          lineHeight: '30px',
+        }}
+      >
+        days
+      </span>
     </div>
   );
 }
@@ -590,7 +627,8 @@ export function FilterBar({ filters, onChange, weeks, defaultFromWeek, defaultTo
     filters.implLeadIds.length > 0 ||
     filters.region !== 'UK' ||
     !isFullRange ||
-    filters.deviationFilter !== 'all';
+    filters.deviationLagMinDays !== '' ||
+    filters.deviationCompare !== 'more';
 
   const statusOptions: DropdownOption[] = STATUS_OPTS.map(s => ({
     id:     s.value,
@@ -719,11 +757,12 @@ export function FilterBar({ filters, onChange, weeks, defaultFromWeek, defaultTo
         <ViewToggle value={filters.view} onChange={v => set({ view: v })} />
       </FilterGroup>
 
-      {/* Deviation: All | Negative (segmented, same pattern as View By) */}
+      {/* Deviation: more than N days behind projection (empty = all) */}
       <FilterGroup label="Deviation">
-        <DeviationToggle
-          value={filters.deviationFilter}
-          onChange={v => set({ deviationFilter: v })}
+        <DeviationFilterControl
+          compare={filters.deviationCompare}
+          threshold={filters.deviationLagMinDays}
+          onChange={patch => set(patch)}
         />
       </FilterGroup>
 
@@ -736,7 +775,8 @@ export function FilterBar({ filters, onChange, weeks, defaultFromWeek, defaultTo
               pmoIds: [], implLeadIds: [],
               fromWeek: defaultFromWeek, toWeek: defaultToWeek,
               region: 'UK',
-              deviationFilter: 'all',
+              deviationCompare: 'more',
+              deviationLagMinDays: '',
             })}
             style={{
               height: 30, padding: '0 10px', fontSize: 11, fontWeight: 500,
