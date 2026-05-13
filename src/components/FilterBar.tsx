@@ -710,7 +710,7 @@ export function FilterBar({ filters, onChange, weeks, defaultFromWeek, defaultTo
         />
       </FilterGroup>
 
-      {/* View by — PMO | Impl. Lead toggle + column multi-select */}
+      {/* View by — PMO|Impl. Lead toggle + column multi-select */}
       <FilterGroup label="View by">
         <div style={{ display: 'flex', gap: 4 }}>
           <div style={{
