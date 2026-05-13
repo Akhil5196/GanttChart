@@ -1,5 +1,4 @@
 export type Status     = 'on-track' | 'minor-issue' | 'needs-attention' | 'critical';
-export type ViewMode   = 'pmo' | 'impl-lead';
 export type ViewFilter = 'all' | 'standard' | 'squat';
 export type Region     = 'AU' | 'US' | 'UK';
 
@@ -85,7 +84,6 @@ export interface GanttFilters {
   search:      string;
   statuses:    Status[];
   view:        ViewFilter;
-  viewMode:    ViewMode;
   pmoIds:      string[];
   implLeadIds: string[];
   fromWeek:    string; // ISO date of Monday of start week

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo, CSSProperties } from 'react';
 import { STATUS_COLORS, STATUS_OPTS, PMO_LIST, IMPL_LEADS } from '../data';
-import type { GanttFilters, DeviationCompare, DeviationLagPreset, Region, Status, ViewFilter, ViewMode, Week } from '../types';
+import type { GanttFilters, DeviationCompare, DeviationLagPreset, Region, Status, ViewFilter, Week } from '../types';
 
 type DeviationLagChoice = Exclude<DeviationLagPreset, ''>;
 
@@ -639,18 +639,21 @@ export function FilterBar({ filters, onChange, weeks, defaultFromWeek, defaultTo
     }} />,
   }));
 
-  const columnOptions: DropdownOption[] = (filters.viewMode === 'pmo' ? PMO_LIST : IMPL_LEADS).map(name => ({
-    id: name, label: name,
-  }));
-  const columnSelected    = filters.viewMode === 'pmo' ? filters.pmoIds : filters.implLeadIds;
-  const columnPlaceholder = filters.viewMode === 'pmo' ? 'All PMOs' : 'All Impl. Leads';
+  const pmoOptions: DropdownOption[] = PMO_LIST.map(name => ({ id: name, label: name }));
+  const implLeadOptions: DropdownOption[] = IMPL_LEADS.map(name => ({ id: name, label: name }));
 
-  function toggleColumn(id: string) {
-    if (filters.viewMode === 'pmo') {
-      set({ pmoIds: filters.pmoIds.includes(id) ? filters.pmoIds.filter(x => x !== id) : [...filters.pmoIds, id] });
-    } else {
-      set({ implLeadIds: filters.implLeadIds.includes(id) ? filters.implLeadIds.filter(x => x !== id) : [...filters.implLeadIds, id] });
-    }
+  function togglePmo(id: string) {
+    set({
+      pmoIds: filters.pmoIds.includes(id) ? filters.pmoIds.filter(x => x !== id) : [...filters.pmoIds, id],
+    });
+  }
+
+  function toggleImplLead(id: string) {
+    set({
+      implLeadIds: filters.implLeadIds.includes(id)
+        ? filters.implLeadIds.filter(x => x !== id)
+        : [...filters.implLeadIds, id],
+    });
   }
 
   function toggleStatus(v: Status) {
@@ -710,35 +713,26 @@ export function FilterBar({ filters, onChange, weeks, defaultFromWeek, defaultTo
         />
       </FilterGroup>
 
-      {/* View by — PMO|Impl. Lead toggle + column multi-select */}
-      <FilterGroup label="View by">
-        <div style={{ display: 'flex', gap: 4 }}>
-          <div style={{
-            display: 'flex', border: '1px solid #D1D5DB',
-            borderRadius: 6, overflow: 'hidden', background: '#F9FAFB', flexShrink: 0,
-          }}>
-            {(['impl-lead', 'pmo'] as ViewMode[]).map(mode => (
-              <button key={mode}
-                onClick={() => set({ viewMode: mode, pmoIds: [], implLeadIds: [] })}
-                style={{
-                  height: 30, padding: '0 12px',
-                  background: filters.viewMode === mode ? '#147B8D' : 'transparent',
-                  color: filters.viewMode === mode ? '#fff' : '#6B7280',
-                  fontSize: 12, fontWeight: 500, border: 'none', cursor: 'pointer',
-                  transition: 'background 0.15s, color 0.15s', whiteSpace: 'nowrap', fontFamily: 'inherit',
-                }}>
-                {mode === 'pmo' ? 'PMO' : 'Impl. Lead'}
-              </button>
-            ))}
-          </div>
-          <MultiSelectDropdown
-            placeholder={columnPlaceholder}
-            options={columnOptions}
-            selected={columnSelected}
-            onToggle={toggleColumn}
-            onClear={() => filters.viewMode === 'pmo' ? set({ pmoIds: [] }) : set({ implLeadIds: [] })}
-          />
-        </div>
+      {/* PMO */}
+      <FilterGroup label="PMO">
+        <MultiSelectDropdown
+          placeholder="All PMOs"
+          options={pmoOptions}
+          selected={filters.pmoIds}
+          onToggle={togglePmo}
+          onClear={() => set({ pmoIds: [] })}
+        />
+      </FilterGroup>
+
+      {/* Impl. Lead */}
+      <FilterGroup label="Impl. Lead">
+        <MultiSelectDropdown
+          placeholder="All Impl. Leads"
+          options={implLeadOptions}
+          selected={filters.implLeadIds}
+          onToggle={toggleImplLead}
+          onClear={() => set({ implLeadIds: [] })}
+        />
       </FilterGroup>
 
       {/* Health */}
@@ -771,7 +765,7 @@ export function FilterBar({ filters, onChange, weeks, defaultFromWeek, defaultTo
         <div style={{ paddingBottom: 1 }}>
           <button
             onClick={() => onChange({
-              search: '', statuses: [], view: 'all', viewMode: filters.viewMode,
+              search: '', statuses: [], view: 'all',
               pmoIds: [], implLeadIds: [],
               fromWeek: defaultFromWeek, toWeek: defaultToWeek,
               region: 'UK',

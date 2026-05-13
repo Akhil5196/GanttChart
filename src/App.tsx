@@ -13,7 +13,6 @@ const DEFAULT_FILTERS: GanttFilters = {
   search:      '',
   statuses:    [],
   view:        'all',
-  viewMode:    'impl-lead',
   pmoIds:      [],
   implLeadIds: [],
   fromWeek:    DEFAULT_FROM_WEEK,
